@@ -1,0 +1,57 @@
+services:
+  postgresql:
+    build:
+      context: .
+      target: postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-keycloak}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres-password}
+    volumes:
+      - ${PG_DATA:-pg-data}:/var/lib/postgresql/data
+    restart: on-failure
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "pg_isready -U ${POSTGRES_USER:-postgres} -q -d ${POSTGRES_DB:-keycloak}"
+      start_period: 10s
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    expose:
+      - 5432
+  keycloak:
+    build:
+      context: .
+      target: keycloak
+    command: ["start-dev"]
+    environment:
+      # https://www.keycloak.org/server/all-config
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD:-password}
+      KC_BOOTSTRAP_ADMIN_CLIENT_ID: ${KC_BOOTSTRAP_ADMIN_CLIENT_ID:-bootstrap-admin}
+      KC_BOOTSTRAP_ADMIN_CLIENT_SECRET: ${KC_BOOTSTRAP_ADMIN_CLIENT_SECRET:-bootstrap-admin-secret}
+      KC_HEALTH_ENABLED: ${KC_HEALTH_ENABLED:-true}
+      KC_LOG_LEVEL: ${KC_LOG_LEVEL:-info}
+      KC_HTTP_PORT: ${KC_HTTP_PORT:-7080}
+      KC_DB: postgres
+      KC_DB_URL: ${KC_DB_URL:-jdbc:postgresql://postgresql:5432/keycloak}
+      KC_DB_USERNAME: ${KC_DB_USERNAME:-postgres}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD:-postgres-password}
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "wget --no-verbose --tries=1 --spider http://localhost:${KC_HTTP_PORT:-7080}/health/ready || exit 1"
+      start_period: 60s
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    ports:
+      - ${KC_HTTP_PORT:-7080}:${KC_HTTP_PORT:-7080}
+    restart: unless-stopped
+    depends_on:
+      postgresql:
+        condition: service_healthy
+
+volumes:
+  pg-data: {}
