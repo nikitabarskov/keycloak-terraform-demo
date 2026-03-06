@@ -38,19 +38,49 @@ services:
       KC_DB_URL: ${KC_DB_URL:-jdbc:postgresql://postgresql:5432/keycloak}
       KC_DB_USERNAME: ${KC_DB_USERNAME:-postgres}
       KC_DB_PASSWORD: ${KC_DB_PASSWORD:-postgres-password}
+      KC_FEATURES: token-exchange:v1,admin-fine-grained-authz:v1
+      KC_HOSTNAME: http://localhost:7080
     healthcheck:
       test:
         - "CMD-SHELL"
-        - "wget --no-verbose --tries=1 --spider http://localhost:${KC_HTTP_PORT:-7080}/health/ready || exit 1"
+        - "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /health/ready HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && timeout 2 cat <&3 | grep -q UP"
       start_period: 60s
       interval: 15s
-      timeout: 5s
+      timeout: 10s
       retries: 10
     ports:
       - ${KC_HTTP_PORT:-7080}:${KC_HTTP_PORT:-7080}
     restart: unless-stopped
     depends_on:
       postgresql:
+        condition: service_healthy
+  mock-oauth2-server:
+    build:
+      context: .
+      target: mock-oauth2-server
+    hostname: host.docker.internal
+    ports:
+      - ${MOCK_OAUTH2_SERVER_PORT:-8090}:8090
+    environment:
+      SERVER_PORT: ${MOCK_OAUTH2_SERVER_PORT:-8090}
+      SERVER_HOSTNAME: 0.0.0.0
+
+  hero-api:
+    build:
+      context: ./hero-api
+    ports:
+      - "8000:8000"
+    environment:
+      KEYCLOAK_URL: http://keycloak:7080
+      KEYCLOAK_EXTERNAL_URL: http://localhost:7080
+      REALM: demo
+      CLIENT_ID: ${CLIENT_ID}
+      CLIENT_SECRET: ${CLIENT_SECRET}
+      IDP_ALIAS: mock-oauth2-server
+      SESSION_SECRET: demo-secret-change-me
+      MOCK_OAUTH2_URL: http://host.docker.internal:8090
+    depends_on:
+      keycloak:
         condition: service_healthy
 
 volumes:

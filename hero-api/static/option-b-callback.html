@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head><title>Option B Callback</title></head>
+<body>
+<script>
+  // This page is loaded inside a popup by the Option B flow.
+  // It extracts the authorization code from the URL and posts it
+  // back to the parent window, then closes itself.
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code');
+  const state = params.get('state');
+  const error = params.get('error');
+  const errorDescription = params.get('error_description');
+
+  if (window.opener) {
+    window.opener.postMessage({
+      type: 'option-b-callback',
+      code: code,
+      state: state,
+      error: error,
+      error_description: errorDescription,
+    }, window.location.origin);
+  }
+
+  window.close();
+</script>
+<p>Completing authentication... this window should close automatically.</p>
+</body>
+</html>
