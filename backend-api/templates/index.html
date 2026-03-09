@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Backend API - SSO Demo</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --border: #2d3040;
+      --text: #e1e4ed;
+      --text-muted: #8b8fa3;
+      --accent: #6c8cff;
+      --accent-hover: #8ba4ff;
+      --success: #4caf7d;
+      --error: #e05c5c;
+      --warning: #e0a84c;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+      background: var(--bg);
+      color: var(--text);
+      padding: 2rem;
+      max-width: 900px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+    h1 {
+      font-size: 1.4rem;
+      margin-bottom: 0.25rem;
+      color: var(--accent);
+    }
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      margin-bottom: 2rem;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .card-header {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+    }
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .status-dot.online { background: var(--success); }
+    .status-dot.offline { background: var(--error); }
+    .user-info {
+      margin-top: 0.75rem;
+      font-size: 0.85rem;
+    }
+    .user-info dt {
+      color: var(--text-muted);
+      display: inline;
+    }
+    .user-info dd {
+      display: inline;
+      margin-left: 0.25rem;
+      margin-right: 1.25rem;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+    button, .btn {
+      font-family: inherit;
+      font-size: 0.85rem;
+      padding: 0.6rem 1.2rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-decoration: none;
+      display: inline-block;
+    }
+    button:hover, .btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    button:disabled:hover {
+      border-color: var(--border);
+      color: var(--text);
+    }
+    button.primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+    button.primary:hover {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+    }
+    button.danger {
+      border-color: var(--error);
+      color: var(--error);
+    }
+    button.danger:hover {
+      background: var(--error);
+      color: #fff;
+    }
+    .result-area {
+      margin-top: 1rem;
+    }
+    .result-area pre {
+      background: #12141c;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1rem;
+      overflow-x: auto;
+      font-size: 0.8rem;
+      line-height: 1.5;
+      max-height: 400px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .result-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 0.4rem;
+    }
+    .tag {
+      font-size: 0.7rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+    }
+    .tag-a { background: #1e2a4a; color: #6c8cff; }
+    .tag-b { background: #1e3a2a; color: #4caf7d; }
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      margin-right: 0.5rem;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error-msg {
+      color: var(--error);
+      font-size: 0.85rem;
+      margin-top: 0.5rem;
+    }
+    .flow-desc {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+    }
+    .sep {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 1.5rem 0;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Backend API</h1>
+  <p class="subtitle">SSO Demo &mdash; Browser-based token exchange flows</p>
+
+  <!-- Auth status -->
+  <div class="card">
+    <div class="card-header">Authentication Status</div>
+    <div class="status-row">
+      {% if logged_in %}
+        <span class="status-dot online"></span>
+        <span>Authenticated</span>
+      {% else %}
+        <span class="status-dot offline"></span>
+        <span>Not authenticated</span>
+      {% endif %}
+    </div>
+    {% if logged_in and user %}
+    <dl class="user-info">
+      <dt>user:</dt><dd>{{ user.preferred_username or user.sub }}</dd>
+      <dt>name:</dt><dd>{{ user.name or '—' }}</dd>
+      <dt>email:</dt><dd>{{ user.email or '—' }}</dd>
+    </dl>
+    {% endif %}
+    <div class="actions" style="margin-top: 1rem;">
+      {% if logged_in %}
+        <a class="btn danger" href="/oauth/logout">Logout</a>
+      {% else %}
+        <a class="btn primary" href="/oauth/login">Login with Keycloak</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Option A -->
+  <div class="card">
+    <div class="card-header">
+      <span class="tag tag-a">Option A</span>
+      Backend Token Exchange
+    </div>
+    <p class="flow-desc">
+      The backend exchanges the Keycloak access token (stored server-side) for an
+      external IdP token using <code>requested_issuer</code> (Keycloak V1 token exchange).
+      The SPA never sees the Keycloak token.
+    </p>
+    <button
+      id="btn-option-a"
+      onclick="fetchExternalTokenOptionA()"
+      {% if not logged_in %}disabled{% endif %}
+    >
+      Get External Token (Option A)
+    </button>
+    <div id="result-a" class="result-area"></div>
+  </div>
+
+  <!-- Option B -->
+  <div class="card">
+    <div class="card-header">
+      <span class="tag tag-b">Option B</span>
+      Frontend Silent Authentication
+    </div>
+    <p class="flow-desc">
+      The SPA performs a <code>prompt=none</code> authorization request directly
+      against the external IdP, leveraging the SSO cookie from the initial
+      federated login. The token is obtained entirely in the browser.
+    </p>
+    <button
+      id="btn-option-b"
+      onclick="fetchExternalTokenOptionB()"
+      {% if not logged_in %}disabled{% endif %}
+    >
+      Get External Token (Option B)
+    </button>
+    <div id="result-b" class="result-area"></div>
+  </div>
+
+  <hr class="sep">
+  <p style="font-size: 0.75rem; color: var(--text-muted);">
+    external IdP: <code>{{ mock_oauth2_url }}</code>
+  </p>
+
+<script>
+  // -----------------------------------------------------------------------
+  // Helpers
+  // -----------------------------------------------------------------------
+
+  function decodeJwtPayload(token) {
+    try {
+      const parts = token.split('.');
+      if (parts.length < 2) return { error: 'not a JWT' };
+      const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      return JSON.parse(atob(payload));
+    } catch (e) {
+      return { error: 'could not decode', message: e.message };
+    }
+  }
+
+  function renderResult(containerId, data, error) {
+    const el = document.getElementById(containerId);
+    if (error) {
+      el.innerHTML = '<p class="error-msg">' + escapeHtml(error) + '</p>';
+      return;
+    }
+    el.innerHTML =
+      '<div class="result-label">Decoded token payload</div>' +
+      '<pre>' + escapeHtml(JSON.stringify(data, null, 2)) + '</pre>';
+  }
+
+  function showLoading(containerId) {
+    document.getElementById(containerId).innerHTML =
+      '<span class="spinner"></span><span style="color:var(--text-muted);font-size:0.85rem;">Requesting token&hellip;</span>';
+  }
+
+  function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  // -----------------------------------------------------------------------
+  // Option A: Backend token exchange via /external/token
+  // -----------------------------------------------------------------------
+
+  async function fetchExternalTokenOptionA() {
+    const btn = document.getElementById('btn-option-a');
+    btn.disabled = true;
+    showLoading('result-a');
+
+    try {
+      const res = await fetch('/external/token', { credentials: 'same-origin' });
+      const body = await res.json();
+
+      if (!res.ok) {
+        renderResult('result-a', null, 'Error ' + res.status + ': ' + JSON.stringify(body));
+        return;
+      }
+
+      renderResult('result-a', body.token_payload || body);
+    } catch (e) {
+      renderResult('result-a', null, 'Network error: ' + e.message);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Option B: Frontend silent auth via popup to external IdP
+  // -----------------------------------------------------------------------
+
+  const MOCK_OAUTH2_URL = '{{ mock_oauth2_url }}';
+
+  function generatePKCE() {
+    const array = new Uint8Array(64);
+    crypto.getRandomValues(array);
+    const verifier = btoa(String.fromCharCode(...array))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+    return crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))
+      .then(digest => {
+        const challenge = btoa(String.fromCharCode(...new Uint8Array(digest)))
+          .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        return { verifier, challenge };
+      });
+  }
+
+  async function fetchExternalTokenOptionB() {
+    const btn = document.getElementById('btn-option-b');
+    btn.disabled = true;
+    showLoading('result-b');
+
+    try {
+      const { verifier, challenge } = await generatePKCE();
+      const state = crypto.randomUUID();
+      const redirectUri = window.location.origin + '/option-b-callback.html';
+
+      const params = new URLSearchParams({
+        response_type: 'code',
+        client_id: 'spa-client',
+        redirect_uri: redirectUri,
+        scope: 'openid',
+        state: state,
+        prompt: 'none',
+        code_challenge: challenge,
+        code_challenge_method: 'S256',
+      });
+
+      const authUrl = MOCK_OAUTH2_URL + '/default/authorize?' + params.toString();
+
+      const popup = window.open(authUrl, 'option_b_auth', 'width=500,height=600');
+
+      const code = await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Popup timed out after 30s'));
+          window.removeEventListener('message', handler);
+        }, 30000);
+
+        function handler(event) {
+          if (event.origin !== window.location.origin) return;
+          if (event.data && event.data.type === 'option-b-callback') {
+            clearTimeout(timeout);
+            window.removeEventListener('message', handler);
+            if (event.data.error) {
+              reject(new Error(event.data.error + ': ' + (event.data.error_description || '')));
+            } else if (event.data.code && event.data.state === state) {
+              resolve(event.data.code);
+            } else {
+              reject(new Error('State mismatch or missing code'));
+            }
+          }
+        }
+
+        window.addEventListener('message', handler);
+
+        const pollTimer = setInterval(() => {
+          if (popup && popup.closed) {
+            clearInterval(pollTimer);
+            clearTimeout(timeout);
+            window.removeEventListener('message', handler);
+            reject(new Error('Popup was closed before completing authentication'));
+          }
+        }, 500);
+      });
+
+      const tokenRes = await fetch(MOCK_OAUTH2_URL + '/default/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          client_id: 'spa-client',
+          code: code,
+          redirect_uri: redirectUri,
+          code_verifier: verifier,
+        }),
+      });
+
+      const tokenBody = await tokenRes.json();
+
+      if (!tokenRes.ok) {
+        renderResult('result-b', null, 'Token exchange failed: ' + JSON.stringify(tokenBody));
+        return;
+      }
+
+      const accessToken = tokenBody.access_token;
+      const decoded = decodeJwtPayload(accessToken);
+      renderResult('result-b', decoded);
+
+    } catch (e) {
+      renderResult('result-b', null, e.message);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+</script>
+
+</body>
+</html>

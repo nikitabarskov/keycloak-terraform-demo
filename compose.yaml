@@ -1,0 +1,89 @@
+services:
+  postgresql:
+    build:
+      context: .
+      target: postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-keycloak}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres-password}
+    volumes:
+      - ${PG_DATA:-pg-data}:/var/lib/postgresql/data
+    restart: on-failure
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "pg_isready -U ${POSTGRES_USER:-postgres} -q -d ${POSTGRES_DB:-keycloak}"
+      start_period: 10s
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    expose:
+      - 5432
+
+  keycloak:
+    build:
+      context: .
+      target: keycloak
+    command: ["start-dev"]
+    environment:
+      # https://www.keycloak.org/server/all-config
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD:-password}
+      KC_BOOTSTRAP_ADMIN_CLIENT_ID: ${KC_BOOTSTRAP_ADMIN_CLIENT_ID:-bootstrap-admin}
+      KC_BOOTSTRAP_ADMIN_CLIENT_SECRET: ${KC_BOOTSTRAP_ADMIN_CLIENT_SECRET:-bootstrap-admin-secret}
+      KC_HEALTH_ENABLED: ${KC_HEALTH_ENABLED:-true}
+      KC_LOG_LEVEL: ${KC_LOG_LEVEL:-info}
+      KC_HTTP_PORT: ${KC_HTTP_PORT:-7080}
+      KC_DB: postgres
+      KC_DB_URL: ${KC_DB_URL:-jdbc:postgresql://postgresql:5432/keycloak}
+      KC_DB_USERNAME: ${KC_DB_USERNAME:-postgres}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD:-postgres-password}
+      KC_FEATURES: token-exchange:v1,admin-fine-grained-authz:v1
+      KC_HOSTNAME: http://localhost:7080
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /health/ready HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && timeout 2 cat <&3 | grep -q UP"
+      start_period: 60s
+      interval: 15s
+      timeout: 10s
+      retries: 10
+    ports:
+      - ${KC_HTTP_PORT:-7080}:${KC_HTTP_PORT:-7080}
+    restart: unless-stopped
+    depends_on:
+      postgresql:
+        condition: service_healthy
+
+  mock-idp:
+    build:
+      context: .
+      target: mock-oauth2-server
+    hostname: host.docker.internal
+    ports:
+      - ${MOCK_IDP_PORT:-8090}:8090
+    environment:
+      SERVER_PORT: ${MOCK_IDP_PORT:-8090}
+      SERVER_HOSTNAME: 0.0.0.0
+
+  backend-api:
+    build:
+      context: ./backend-api
+    ports:
+      - "8000:8000"
+    environment:
+      KEYCLOAK_URL: http://keycloak:7080
+      KEYCLOAK_EXTERNAL_URL: http://localhost:7080
+      REALM: demo
+      CLIENT_ID: ${CLIENT_ID}
+      CLIENT_SECRET: ${CLIENT_SECRET}
+      IDP_ALIAS: mock-idp
+      SESSION_SECRET: demo-secret-change-me
+      MOCK_IDP_URL: http://host.docker.internal:8090
+    depends_on:
+      keycloak:
+        condition: service_healthy
+
+volumes:
+  pg-data: {}

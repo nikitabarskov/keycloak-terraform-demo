@@ -1,0 +1,8 @@
+[[tools.terraform]]
+version = "1.13.3"
+backend = "aqua:hashicorp/terraform"
+"platforms.linux-arm64" = { checksum = "sha256:fa82fb1b08354573467557f33e6a15e7f9e1bba74eb15492f151ca27525d2acc", url = "https://releases.hashicorp.com/terraform/1.13.3/terraform_1.13.3_linux_arm64.zip"}
+"platforms.linux-x64" = { checksum = "sha256:71fc43d92ea09907be5d416d2405a6a9c2d1ceaed633f5e175c0af26e8c4b365", url = "https://releases.hashicorp.com/terraform/1.13.3/terraform_1.13.3_linux_amd64.zip"}
+"platforms.macos-arm64" = { checksum = "sha256:8362e7284b38a1194884963deed83481696d468b42dab88052775f4280383584", url = "https://releases.hashicorp.com/terraform/1.13.3/terraform_1.13.3_darwin_arm64.zip"}
+"platforms.macos-x64" = { checksum = "sha256:5ef8e19091106b1921af26db5bcee3cd84a475eae2fd190fc02b1049b320d042", url = "https://releases.hashicorp.com/terraform/1.13.3/terraform_1.13.3_darwin_amd64.zip"}
+"platforms.windows-x64" = { checksum = "sha256:e75a97238f2dc43ab90fca1af554c18f995b16a4b06a4ec27bcdbab52c1d2dc8", url = "https://releases.hashicorp.com/terraform/1.13.3/terraform_1.13.3_windows_amd64.zip"}
