@@ -2,6 +2,7 @@ resource "keycloak_realm" "demo" {
   realm                       = "demo"
   default_signature_algorithm = "EdDSA"
   display_name                = "Demo"
+  ssl_required                = "none"
 }
 
 resource "random_uuid7" "main" {}
@@ -68,7 +69,7 @@ resource "keycloak_openid_user_client_role_protocol_mapper" "roles" {
   # Only include roles from this specific client (not every client in the realm)
   client_id_for_role_mappings = keycloak_openid_client.main.client_id
 
-  claim_name        = "backend-roles"
+  claim_name          = "backend-roles"
   claim_value_type    = "String"
   multivalued         = true
   add_to_id_token     = false

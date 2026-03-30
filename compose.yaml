@@ -41,6 +41,8 @@ services:
       KC_DB_PASSWORD: ${KC_DB_PASSWORD:-postgres-password}
       KC_FEATURES: token-exchange:v1,admin-fine-grained-authz:v1
       KC_HOSTNAME: http://localhost:7080
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
     healthcheck:
       test:
         - "CMD-SHELL"
